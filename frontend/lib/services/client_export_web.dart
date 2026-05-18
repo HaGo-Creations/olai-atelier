@@ -287,7 +287,7 @@ $body
   add('word/styles.xml', _stylesXml());
   add('word/numbering.xml', _numberingXml());
 
-  final encoded = ZipEncoder().encode(archive);
+  final encoded = ZipEncoder().encode(archive)!;
   return Uint8List.fromList(encoded);
 }
 
