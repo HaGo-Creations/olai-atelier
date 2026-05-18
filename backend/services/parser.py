@@ -84,18 +84,22 @@ async def parse_audio(
     source_lang: str = "auto",
     target_lang: str = "English",
 ) -> str:
-    """Gemma 4 E2B/E4B native ASR — local mode preferred (cloud 26B has no audio).
+    """ASR + translation.
+
+    Routing happens inside gemma.audio_transcribe():
+      - Local Ollama Gemma 4 E2B/E4B if available
+      - Otherwise Gemini (cloud) — Gemma 4 26B on Google AI Studio has no
+        audio modality, so cloud audio is routed to Gemini.
 
     When source_lang is "auto", asks the model to auto-detect spoken language
     and return both the verbatim transcription and a translation into
     target_lang. The returned text is the user-facing version (translation
     followed by the original if different).
     """
-    if not gemma.LOCAL_READY:
+    if not (gemma.LOCAL_READY or gemma.CLOUD_READY):
         raise RuntimeError(
-            "Audio requires local Gemma 4 E2B/E4B (Ollama). "
-            "Cloud Gemma 4 26B does not support audio input. "
-            "Install Ollama and pull gemma-4-e2b-it for audio."
+            "Audio requires either local Gemma 4 E2B/E4B (Ollama) or a "
+            "configured GOOGLE_API_KEY for Gemini. Neither is available."
         )
     raw = await gemma.audio_transcribe(content, source_lang=source_lang, target_lang=target_lang)
 
