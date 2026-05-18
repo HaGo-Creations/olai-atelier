@@ -1,11 +1,11 @@
 {
-    "name": "gemma_educator_agent",
-    "short_name": "gemma_educator_agent",
+    "name": "OLAI — Agentic Workflow for Educators",
+    "short_name": "OLAI",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "OLAI — Agentic Workflow for Educators",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

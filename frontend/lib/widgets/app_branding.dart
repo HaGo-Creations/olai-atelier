@@ -15,8 +15,8 @@ import '../theme.dart';
 
 class AppBrandingConfig {
   // Edit these placeholders to set your final app name & tagline
-  static const String appName = 'App Name';
-  static const String tagline = 'Your tagline goes here';
+  static const String appName = 'OLAI';
+  static const String tagline = 'Agentic Workflow for Educators';
 }
 
 /// Square logo (default 32px). Swap the contents of this method to use a PNG.
