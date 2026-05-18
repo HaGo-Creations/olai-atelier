@@ -8,11 +8,20 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# System deps for PDF rendering and image processing
+# System deps for PDF rendering, image processing, and Indic font rendering.
+# fonts-noto-* gives us full Unicode coverage (including Tamil, Hindi, Bengali,
+# Telugu, Kannada, Malayalam, Urdu, etc.) for both reportlab (PDF) and any
+# server-side preview rendering. python-docx doesn't render fonts itself —
+# Word picks them up at open time — but bundling them keeps the host
+# environment consistent if we ever convert DOCX → PDF here.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     poppler-utils \
+    fonts-noto-core \
+    fonts-noto-cjk \
+    fonts-noto-extra \
+    fonts-indic \
     && rm -rf /var/lib/apt/lists/*
 
 # Python deps
