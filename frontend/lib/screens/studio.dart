@@ -830,9 +830,20 @@ class _UploadZone extends ConsumerStatefulWidget {
 
 // Common languages for audio transcription (Indian classroom context + major world languages)
 const _audioLanguages = [
-  'Tamil', 'Hindi', 'Telugu', 'Kannada', 'Malayalam',
-  'Bengali', 'Marathi', 'Gujarati', 'Urdu', 'Punjabi',
-  'English', 'French', 'Arabic', 'Spanish',
+  'Tamil',
+  'Hindi',
+  'Telugu',
+  'Kannada',
+  'Malayalam',
+  'Bengali',
+  'Marathi',
+  'Gujarati',
+  'Urdu',
+  'Punjabi',
+  'English',
+  'French',
+  'Arabic',
+  'Spanish',
 ];
 
 class _UploadZoneState extends ConsumerState<_UploadZone> {
@@ -905,8 +916,9 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
         targetLang: _audioTargetLang,
       );
       if (parsed.text.isNotEmpty) {
-        widget.state.sourceText =
-            (widget.state.sourceText.isEmpty ? '' : '${widget.state.sourceText}\n\n') +
+        widget.state.sourceText = (widget.state.sourceText.isEmpty
+                ? ''
+                : '${widget.state.sourceText}\n\n') +
             parsed.text;
       }
       setState(() {
@@ -1176,8 +1188,7 @@ class _AudioLangRow extends StatelessWidget {
       children: [
         const Icon(Icons.mic, size: 14),
         const SizedBox(width: 6),
-        Text('Audio language:',
-            style: Theme.of(context).textTheme.labelSmall),
+        Text('Audio language:', style: Theme.of(context).textTheme.labelSmall),
         const SizedBox(width: 8),
         Expanded(
           child: DropdownButtonFormField<String>(
@@ -1186,8 +1197,7 @@ class _AudioLangRow extends StatelessWidget {
             decoration: const InputDecoration(
               labelText: 'Source',
               isDense: true,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             ),
             items: [
               for (final l in _audioLanguages)
@@ -1208,8 +1218,7 @@ class _AudioLangRow extends StatelessWidget {
             decoration: const InputDecoration(
               labelText: 'Translate to',
               isDense: true,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             ),
             items: [
               for (final l in _audioLanguages)
@@ -1653,7 +1662,7 @@ class _GenerateStepState extends ConsumerState<_GenerateStep> {
       final filename =
           '${resource.title.replaceAll(RegExp(r"[^\w\s-]"), "").replaceAll(RegExp(r"\s+"), "_")}.$format';
 
-      await launchDownload(url, suggestedFilename: filename);
+      launchDownload(url, suggestedFilename: filename);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
