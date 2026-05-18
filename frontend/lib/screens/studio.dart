@@ -828,32 +828,9 @@ class _UploadZone extends ConsumerStatefulWidget {
   ConsumerState<_UploadZone> createState() => _UploadZoneState();
 }
 
-// Common languages for audio transcription (Indian classroom context + major world languages)
-const _audioLanguages = [
-  'Tamil',
-  'Hindi',
-  'Telugu',
-  'Kannada',
-  'Malayalam',
-  'Bengali',
-  'Marathi',
-  'Gujarati',
-  'Urdu',
-  'Punjabi',
-  'English',
-  'French',
-  'Arabic',
-  'Spanish',
-];
-
 class _UploadZoneState extends ConsumerState<_UploadZone> {
   bool _hovering = false;
   bool _searching = false;
-  bool _parsingAudio = false;
-  String _audioSourceLang = 'Tamil';
-  String _audioTargetLang = 'English';
-  // Track which uploaded filenames are audio so we show the right icon
-  final Set<String> _audioFileNames = {};
   final _searchCtrl = TextEditingController();
   @override
   void dispose() {
@@ -891,47 +868,6 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
           _registerFile(f.name, f.size);
         }
       });
-    }
-  }
-
-  Future<void> _pickAudioFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      type: FileType.custom,
-      allowedExtensions: ['mp3', 'wav', 'm4a', 'ogg', 'webm'],
-    );
-    if (result == null || result.files.isEmpty) return;
-    final f = result.files.first;
-    final bytes = List<int>.from(f.bytes ?? []);
-    setState(() {
-      _parsingAudio = true;
-      _audioFileNames.add(f.name);
-    });
-    try {
-      final api = ref.read(apiServiceProvider);
-      final parsed = await api.parseFile(
-        bytes: bytes,
-        filename: f.name,
-        sourceLang: _audioSourceLang,
-        targetLang: _audioTargetLang,
-      );
-      if (parsed.text.isNotEmpty) {
-        widget.state.sourceText = (widget.state.sourceText.isEmpty
-                ? ''
-                : '${widget.state.sourceText}\n\n') +
-            parsed.text;
-      }
-      setState(() {
-        _registerFile(f.name, f.size, parsedText: parsed.text);
-        _parsingAudio = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        setState(() => _parsingAudio = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Audio transcription failed: $e')),
-        );
-      }
     }
   }
 
@@ -995,7 +931,7 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
           Text('Drop files here, or use the options below',
               style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.md),
-          // Primary actions: Browse, Paste text, Upload Audio
+          // Primary actions: Browse, Paste text
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1009,24 +945,7 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
                   onPressed: _pasteText,
                   icon: const Icon(Icons.content_paste, size: 16),
                   label: const Text('Paste text')),
-              _parsingAudio
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : FilledButton.tonalIcon(
-                      onPressed: _pickAudioFile,
-                      icon: const Icon(Icons.mic, size: 16),
-                      label: const Text('Upload Audio')),
             ],
-          ),
-          // Audio language selector
-          const SizedBox(height: AppSpacing.md),
-          _AudioLangRow(
-            sourceLang: _audioSourceLang,
-            targetLang: _audioTargetLang,
-            onSourceChanged: (v) => setState(() => _audioSourceLang = v),
-            onTargetChanged: (v) => setState(() => _audioTargetLang = v),
           ),
           // Web search divider + input
           Padding(
@@ -1080,11 +999,9 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
                 for (final f in widget.state.uploadedFiles)
                   Chip(
                     avatar: Icon(
-                      _audioFileNames.contains(f)
-                          ? Icons.mic
-                          : f.toLowerCase().endsWith('.pdf')
-                              ? Icons.picture_as_pdf
-                              : Icons.image_outlined,
+                      f.toLowerCase().endsWith('.pdf')
+                          ? Icons.picture_as_pdf
+                          : Icons.image_outlined,
                       size: 14,
                     ),
                     label: Text(f, style: const TextStyle(fontSize: 12)),
@@ -1096,7 +1013,6 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
                           widget.state.uploadIds.removeAt(idx);
                         }
                       }
-                      _audioFileNames.remove(f);
                       widget.onChanged();
                     }),
                     deleteIcon: const Icon(Icons.close, size: 14),
@@ -1106,72 +1022,6 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
           ],
         ]),
       ),
-    );
-  }
-}
-
-// ── Audio language selector ────────────────────────────────────────────────
-
-class _AudioLangRow extends StatelessWidget {
-  const _AudioLangRow({
-    required this.sourceLang,
-    required this.targetLang,
-    required this.onSourceChanged,
-    required this.onTargetChanged,
-  });
-  final String sourceLang;
-  final String targetLang;
-  final ValueChanged<String> onSourceChanged;
-  final ValueChanged<String> onTargetChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.mic, size: 14),
-        const SizedBox(width: 6),
-        Text('Audio language:', style: Theme.of(context).textTheme.labelSmall),
-        const SizedBox(width: 8),
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            value: sourceLang,
-            isDense: true,
-            decoration: const InputDecoration(
-              labelText: 'Source',
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            ),
-            items: [
-              for (final l in _audioLanguages)
-                DropdownMenuItem(value: l, child: Text(l))
-            ],
-            onChanged: (v) {
-              if (v != null) onSourceChanged(v);
-            },
-          ),
-        ),
-        const SizedBox(width: 6),
-        const Icon(Icons.arrow_forward, size: 14),
-        const SizedBox(width: 6),
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            value: targetLang,
-            isDense: true,
-            decoration: const InputDecoration(
-              labelText: 'Translate to',
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            ),
-            items: [
-              for (final l in _audioLanguages)
-                DropdownMenuItem(value: l, child: Text(l))
-            ],
-            onChanged: (v) {
-              if (v != null) onTargetChanged(v);
-            },
-          ),
-        ),
-      ],
     );
   }
 }
