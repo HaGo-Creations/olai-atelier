@@ -33,11 +33,13 @@ Future<String> clientExportMarkdown({
       bytes = await _buildPdf(markdown, title);
       mime = 'application/pdf';
       ext = 'pdf';
+      break;
     case 'docx':
       bytes = _buildDocx(markdown, title);
       mime = 'application/vnd.openxmlformats-officedocument'
           '.wordprocessingml.document';
       ext = 'docx';
+      break;
     default:
       throw UnsupportedError('clientExportMarkdown: unknown format "$format"');
   }
@@ -169,8 +171,8 @@ pw.Widget _pdfNumbered(String num, String text) => pw.Padding(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text('$num ',
-              style: pw.TextStyle(
-                  fontSize: 11, fontWeight: pw.FontWeight.bold)),
+              style:
+                  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
           pw.Expanded(child: pw.RichText(text: _inlinePdfSpan(text))),
         ],
       ),
@@ -180,8 +182,8 @@ pw.Widget _pdfBlockquote(String text) => pw.Container(
       margin: const pw.EdgeInsets.only(left: 16, bottom: 6),
       padding: const pw.EdgeInsets.all(8),
       decoration: const pw.BoxDecoration(
-        border: pw.Border(
-            left: pw.BorderSide(color: PdfColors.grey400, width: 3)),
+        border:
+            pw.Border(left: pw.BorderSide(color: PdfColors.grey400, width: 3)),
       ),
       child: pw.Text(text,
           style: pw.TextStyle(
@@ -200,8 +202,7 @@ pw.TextSpan _inlinePdfSpan(String text) {
     final mathInline = RegExp(r'^\$([^$]+)\$').firstMatch(remaining);
     if (mathInline != null) {
       spans.add(pw.TextSpan(
-          text: mathInline.group(1)!,
-          style: const pw.TextStyle(fontSize: 11)));
+          text: mathInline.group(1)!, style: const pw.TextStyle(fontSize: 11)));
       remaining = remaining.substring(mathInline.end);
       continue;
     }
@@ -210,8 +211,7 @@ pw.TextSpan _inlinePdfSpan(String text) {
     if (bold != null) {
       spans.add(pw.TextSpan(
           text: bold.group(1)!,
-          style: pw.TextStyle(
-              fontSize: 11, fontWeight: pw.FontWeight.bold)));
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)));
       remaining = remaining.substring(bold.end);
       continue;
     }
@@ -220,8 +220,7 @@ pw.TextSpan _inlinePdfSpan(String text) {
     if (italic != null) {
       spans.add(pw.TextSpan(
           text: italic.group(1)!,
-          style: pw.TextStyle(
-              fontSize: 11, fontStyle: pw.FontStyle.italic)));
+          style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic)));
       remaining = remaining.substring(italic.end);
       continue;
     }
@@ -229,8 +228,7 @@ pw.TextSpan _inlinePdfSpan(String text) {
     final code = RegExp(r'^`(.+?)`').firstMatch(remaining);
     if (code != null) {
       spans.add(pw.TextSpan(
-          text: code.group(1)!,
-          style: const pw.TextStyle(fontSize: 10)));
+          text: code.group(1)!, style: const pw.TextStyle(fontSize: 10)));
       remaining = remaining.substring(code.end);
       continue;
     }
@@ -278,7 +276,7 @@ $body
 
   final archive = Archive();
   void add(String name, String content) {
-    final b = utf8.encode(content);
+    final b = Uint8List.fromList(utf8.encode(content));
     archive.addFile(ArchiveFile(name, b.length, b));
   }
 
@@ -289,7 +287,8 @@ $body
   add('word/styles.xml', _stylesXml());
   add('word/numbering.xml', _numberingXml());
 
-  return Uint8List.fromList(ZipEncoder().encode(archive)!);
+  final encoded = ZipEncoder().encode(archive);
+  return Uint8List.fromList(encoded);
 }
 
 String _markdownToOoxml(String markdown) {
@@ -309,11 +308,10 @@ String _markdownToOoxml(String markdown) {
       final text = line.replaceFirst(RegExp(r'^\d+\. '), '').trim();
       buf.writeln(_ooxmlList(text, numId: '2'));
     } else if (line.startsWith('> ')) {
-      buf.writeln(_ooxmlPara(line.substring(2).trim(),
-          style: 'Quote', italic: true));
-    } else if (line.trim().isEmpty) {
       buf.writeln(
-          '    <w:p><w:pPr><w:pStyle w:val="Normal"/></w:pPr></w:p>');
+          _ooxmlPara(line.substring(2).trim(), style: 'Quote', italic: true));
+    } else if (line.trim().isEmpty) {
+      buf.writeln('    <w:p><w:pPr><w:pStyle w:val="Normal"/></w:pPr></w:p>');
     } else if (line.startsWith('---') || line.startsWith('***')) {
       buf.writeln(_ooxmlPara('', style: 'Normal'));
     } else {
@@ -405,7 +403,8 @@ String _esc(String s) => s
 
 // ── OOXML boilerplate ─────────────────────────────────────────────────────────
 
-String _contentTypesXml() => '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+String _contentTypesXml() =>
+    '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
@@ -419,13 +418,15 @@ String _relsXml() => '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
 </Relationships>''';
 
-String _wordRelsXml() => '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+String _wordRelsXml() =>
+    '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>
 </Relationships>''';
 
-String _stylesXml() => '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+String _stylesXml() =>
+    '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:style w:type="paragraph" w:styleId="Normal" w:default="1">
     <w:name w:val="Normal"/>
@@ -457,7 +458,8 @@ String _stylesXml() => '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?
   </w:style>
 </w:styles>''';
 
-String _numberingXml() => '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+String _numberingXml() =>
+    '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:abstractNum w:abstractNumId="0">
     <w:multiLevelType w:val="hybridMultilevel"/>

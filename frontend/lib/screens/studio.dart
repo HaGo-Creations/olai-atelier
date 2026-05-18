@@ -995,6 +995,7 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
           Text('Drop files here, or use the options below',
               style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.md),
+          // Primary actions: Browse, Paste text, Upload Audio
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1008,8 +1009,26 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
                   onPressed: _pasteText,
                   icon: const Icon(Icons.content_paste, size: 16),
                   label: const Text('Paste text')),
+              _parsingAudio
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : FilledButton.tonalIcon(
+                      onPressed: _pickAudioFile,
+                      icon: const Icon(Icons.mic, size: 16),
+                      label: const Text('Upload Audio')),
             ],
           ),
+          // Audio language selector
+          const SizedBox(height: AppSpacing.md),
+          _AudioLangRow(
+            sourceLang: _audioSourceLang,
+            targetLang: _audioTargetLang,
+            onSourceChanged: (v) => setState(() => _audioSourceLang = v),
+            onTargetChanged: (v) => setState(() => _audioTargetLang = v),
+          ),
+          // Web search divider + input
           Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             child: Row(children: [
@@ -1048,6 +1067,7 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
                 onPressed: () => _runSearch(_searchCtrl.text),
               ),
           ]),
+          // Uploaded file chips (shown only after at least one upload)
           if (widget.state.uploadedFiles.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.md),
             const Divider(height: 1),
@@ -1057,110 +1077,32 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
               runSpacing: 6,
               alignment: WrapAlignment.center,
               children: [
-                FilledButton.tonalIcon(
-                    onPressed: _pickFiles,
-                    icon: const Icon(Icons.folder_open, size: 16),
-                    label: const Text('Browse device')),
-                FilledButton.tonalIcon(
-                    onPressed: _pasteText,
-                    icon: const Icon(Icons.content_paste, size: 16),
-                    label: const Text('Paste text')),
-                _parsingAudio
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : FilledButton.tonalIcon(
-                        onPressed: _pickAudioFile,
-                        icon: const Icon(Icons.mic, size: 16),
-                        label: const Text('Upload Audio')),
-              ],
-            ),
-            // Audio language selector
-            const SizedBox(height: AppSpacing.md),
-            _AudioLangRow(
-              sourceLang: _audioSourceLang,
-              targetLang: _audioTargetLang,
-              onSourceChanged: (v) => setState(() => _audioSourceLang = v),
-              onTargetChanged: (v) => setState(() => _audioTargetLang = v),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-              child: Row(children: [
-                const Expanded(child: Divider()),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('OR SEARCH THE WEB',
-                      style: Theme.of(context).textTheme.labelSmall),
-                ),
-                const Expanded(child: Divider()),
-              ]),
-            ),
-            Row(
-              children: [
-                const Icon(Icons.travel_explore, size: 18),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: TextField(
-                    controller: _searchCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'Search for context…',
-                      isDense: true,
-                      border: InputBorder.none,
+                for (final f in widget.state.uploadedFiles)
+                  Chip(
+                    avatar: Icon(
+                      _audioFileNames.contains(f)
+                          ? Icons.mic
+                          : f.toLowerCase().endsWith('.pdf')
+                              ? Icons.picture_as_pdf
+                              : Icons.image_outlined,
+                      size: 14,
                     ),
-                    onSubmitted: _runSearch,
-                  ),
-                ),
-                if (_searching)
-                  const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                else
-                  IconButton(
-                    iconSize: 18,
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.search),
-                    onPressed: () => _runSearch(_searchCtrl.text),
-                  ),
-              ],
-            ),
-            if (widget.state.uploadedFiles.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.md),
-              const Divider(height: 1),
-              const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                alignment: WrapAlignment.center,
-                children: [
-                  for (final f in widget.state.uploadedFiles)
-                    Chip(
-                      avatar: Icon(
-                        _audioFileNames.contains(f)
-                            ? Icons.mic
-                            : f.toLowerCase().endsWith('.pdf')
-                                ? Icons.picture_as_pdf
-                                : Icons.image_outlined,
-                        size: 14,
-                      ),
-                      label: Text(f, style: const TextStyle(fontSize: 12)),
-                      onDeleted: () => setState(() {
-                        final idx = widget.state.uploadedFiles.indexOf(f);
-                        if (idx >= 0) {
-                          widget.state.uploadedFiles.removeAt(idx);
-                          if (idx < widget.state.uploadIds.length) {
-                            widget.state.uploadIds.removeAt(idx);
-                          }
+                    label: Text(f, style: const TextStyle(fontSize: 12)),
+                    onDeleted: () => setState(() {
+                      final idx = widget.state.uploadedFiles.indexOf(f);
+                      if (idx >= 0) {
+                        widget.state.uploadedFiles.removeAt(idx);
+                        if (idx < widget.state.uploadIds.length) {
+                          widget.state.uploadIds.removeAt(idx);
                         }
-                        _audioFileNames.remove(f);
-                        widget.onChanged();
-                      }),
-                      deleteIcon: const Icon(Icons.close, size: 14),
-                    ),
-                ],
-              ),
-            ],
+                      }
+                      _audioFileNames.remove(f);
+                      widget.onChanged();
+                    }),
+                    deleteIcon: const Icon(Icons.close, size: 14),
+                  ),
+              ],
+            ),
           ],
         ]),
       ),
