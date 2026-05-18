@@ -13,6 +13,7 @@ import 'screens/studio.dart';
 import 'screens/cabinet.dart';
 import 'screens/settings.dart';
 import 'state/providers.dart';
+import 'state/persistence.dart';
 import 'theme.dart';
 import 'widgets/app_branding.dart';
 import 'widgets/app_footer.dart';
@@ -41,6 +42,10 @@ class _BootstrapState extends ConsumerState<_Bootstrap> {
   void initState() {
     super.initState();
     _stringsF = Strings.load(const Locale('en'));
+    // Load saved settings (curriculum, fields, prompts, profile, branding…)
+    // from SharedPreferences and start auto-saving on every change.
+    // It's a fire-and-forget read; the FutureProvider keeps it idempotent.
+    ref.read(persistenceBootstrapProvider);
   }
 
   @override

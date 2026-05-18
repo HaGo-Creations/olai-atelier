@@ -147,6 +147,9 @@ class FieldsNotifier extends StateNotifier<List<CustomField>> {
                   optionCodes: {...f.optionCodes, option: code.toUpperCase()})
               : f,
       ];
+
+  /// Replace state with persisted list. Used by StatePersistence.
+  void restoreAll(List<CustomField> items) => state = items;
 }
 
 final fieldsProvider = StateNotifierProvider<FieldsNotifier, List<CustomField>>(
@@ -230,6 +233,9 @@ class ProfileNotifier extends StateNotifier<TeacherProfile> {
   void setSubjects(List<String> s) => state = state.copyWith(subjects: s);
   void setGrades(List<String> g) => state = state.copyWith(grades: g);
   void toggleLock() => state = state.copyWith(locked: !state.locked);
+
+  /// Replace state with persisted value. Used by StatePersistence.
+  void restore(TeacherProfile v) => state = v;
 }
 
 final profileProvider = StateNotifierProvider<ProfileNotifier, TeacherProfile>(
@@ -436,6 +442,9 @@ class CurriculumNotifier extends StateNotifier<List<CurriculumEntry>> {
             : e
     ];
   }
+
+  /// Replace state with persisted list. Used by StatePersistence.
+  void restoreAll(List<CurriculumEntry> items) => state = items;
 }
 
 final curriculumProvider =
@@ -560,6 +569,9 @@ class PresetsNotifier extends StateNotifier<List<ResourcePreset>> {
       ];
   void replaceBlocks(String id, List<WorksheetBlock> b) =>
       state = [for (final p in state) p.id == id ? p.copyWith(blocks: b) : p];
+
+  /// Replace state with persisted list. Used by StatePersistence.
+  void restoreAll(List<ResourcePreset> items) => state = items;
 }
 
 final presetsProvider =
@@ -613,6 +625,9 @@ class PromptsNotifier extends StateNotifier<List<PromptTemplate>> {
     add(t);
     return t;
   }
+
+  /// Replace state with persisted list. Used by StatePersistence.
+  void restoreAll(List<PromptTemplate> items) => state = items;
 }
 
 final promptsProvider =
@@ -632,6 +647,9 @@ class BrandingNotifier extends StateNotifier<Branding> {
   void setApplyOnExport(bool v) => state = state.copyWith(applyOnExport: v);
   void toggleLock() => state = state.copyWith(locked: !state.locked);
   void setLayout(DocFormat f, PageLayout l) => state = state.withLayout(f, l);
+
+  /// Replace state with persisted value. Used by StatePersistence.
+  void restore(Branding v) => state = v;
 }
 
 final brandingProvider = StateNotifierProvider<BrandingNotifier, Branding>(
@@ -701,6 +719,9 @@ class QuestionSchemasNotifier extends StateNotifier<List<QuestionSchema>> {
       for (final f in s.fields) f.id == updated.id ? updated : f,
     ]));
   }
+
+  /// Replace state with persisted list. Used by StatePersistence.
+  void restoreAll(List<QuestionSchema> items) => state = items;
 }
 
 final questionSchemasProvider =
@@ -726,6 +747,9 @@ class AccessibilityNotifier extends StateNotifier<AccessibilitySettings> {
       state = state.copyWith(screenReaderHints: v);
   void setColorblindSafe(bool v) =>
       state = state.copyWith(colorblindSafePalette: v);
+
+  /// Replace state with persisted value. Used by StatePersistence.
+  void restore(AccessibilitySettings v) => state = v;
 }
 
 final accessibilityProvider =
@@ -813,6 +837,9 @@ class ResourceFieldSetsNotifier extends StateNotifier<List<ResourceFieldSet>> {
         .firstWhere((d) => d.resourceType == typeKey);
     replace(def);
   }
+
+  /// Replace state with persisted list. Used by StatePersistence.
+  void restoreAll(List<ResourceFieldSet> items) => state = items;
 }
 
 final fieldSetsProvider =
