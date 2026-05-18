@@ -843,24 +843,6 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
   bool _transcribing = false;
   Duration _recordDuration = Duration.zero;
   Timer? _recordTimer;
-  String _transcriptTargetLang = 'English';
-
-  static const List<String> _transcriptLanguages = [
-    'English',
-    'Tamil',
-    'Hindi',
-    'Telugu',
-    'Kannada',
-    'Malayalam',
-    'Bengali',
-    'Marathi',
-    'Gujarati',
-    'Urdu',
-    'Punjabi',
-    'French',
-    'Arabic',
-    'Spanish',
-  ];
 
   @override
   void dispose() {
@@ -990,6 +972,12 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
 
     if (bytes.isEmpty) return;
 
+    // The Details section's "Output language" drives where we translate to.
+    // Use the first chosen output language (works for mono/bilingual/multi).
+    final targetLang = widget.state.languages.isNotEmpty
+        ? widget.state.languages.first
+        : 'English';
+
     setState(() => _transcribing = true);
     try {
       final api = ref.read(apiServiceProvider);
@@ -997,7 +985,7 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
         bytes: bytes,
         filename: 'recording_${DateTime.now().millisecondsSinceEpoch}.webm',
         sourceLang: 'auto',
-        targetLang: _transcriptTargetLang,
+        targetLang: targetLang,
       );
       if (!mounted) return;
       if (parsed.text.trim().isNotEmpty) {
@@ -1007,11 +995,17 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
               : '${widget.state.sourceText}\n\n${parsed.text}';
           widget.onChanged();
         });
+        // Pull the auto-detected language out of the response text if the
+        // backend embedded it as "_Original (LANG):_ ..." (see parser.py).
+        final detectedMatch =
+            RegExp(r'_Original \(([^)]+)\):_').firstMatch(parsed.text);
+        final detected = detectedMatch?.group(1);
+        final dur = _formatDuration(_recordDuration);
+        final msg = detected != null
+            ? 'Transcribed $dur of $detected → $targetLang'
+            : 'Transcribed $dur of audio';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-            'Transcribed ${_formatDuration(_recordDuration)} of audio',
-          )),
+          SnackBar(content: Text(msg)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1114,41 +1108,6 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
                     ),
             ],
           ),
-          // Transcript target language (only when not in middle of recording)
-          if (!_isRecording) ...[
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.translate, size: 14),
-                const SizedBox(width: 6),
-                Text('Transcribe to:',
-                    style: Theme.of(context).textTheme.labelSmall),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 160,
-                  child: DropdownButtonFormField<String>(
-                    value: _transcriptTargetLang,
-                    isDense: true,
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    ),
-                    items: [
-                      for (final l in _transcriptLanguages)
-                        DropdownMenuItem(value: l, child: Text(l)),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) {
-                        setState(() => _transcriptTargetLang = v);
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
           // Web search divider + input
           Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
