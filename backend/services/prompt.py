@@ -234,15 +234,37 @@ def build_image_extract_prompt(language_hint: str = "English") -> str:
     )
 
 
-def build_audio_transcribe_prompt(source_lang: str = "Tamil", target_lang: str = "English") -> str:
-    """For Gemma 4 E2B/E4B audio: ASR + translation."""
-    if source_lang == target_lang:
+def build_audio_transcribe_prompt(source_lang: str = "auto", target_lang: str = "English") -> str:
+    """For Gemma 4 E2B/E4B audio: ASR + translation.
+
+    source_lang="auto"  -> let Gemma detect the spoken language
+    """
+    auto_detect = source_lang.lower() in ("auto", "", "detect", "automatic")
+
+    # Same language requested as the source (or auto with target same as likely source):
+    # transcribe verbatim only.
+    if not auto_detect and source_lang == target_lang:
         return (
             f"Transcribe the following speech segment in {source_lang} into {source_lang} text.\n\n"
             f"Follow these specific instructions for formatting the answer:\n"
             f"* Only output the transcription, with no newlines.\n"
             f"* When transcribing numbers, write the digits, i.e. write 1.7 and not one point seven, and write 3 instead of three."
         )
+
+    if auto_detect:
+        return (
+            f"Listen to the speech segment, automatically detect which language is spoken, then "
+            f"transcribe it and translate it into {target_lang}.\n\n"
+            f"Output format (strict, follow exactly):\n"
+            f"DETECTED_LANGUAGE: <name of the language you detected>\n"
+            f"ORIGINAL: <verbatim transcription in the detected language>\n"
+            f"TRANSLATION ({target_lang}): <translation into {target_lang}>\n\n"
+            f"Rules:\n"
+            f"* When transcribing numbers, write digits (write 3 instead of three, 1.7 instead of one point seven).\n"
+            f"* If the speech is already in {target_lang}, the TRANSLATION line should be the same as ORIGINAL.\n"
+            f"* Output only those three lines, nothing else."
+        )
+
     return (
         f"Transcribe the following speech segment in {source_lang}, then translate it into {target_lang}.\n"
         f"When formatting the answer, first output the transcription in {source_lang}, then one newline, "

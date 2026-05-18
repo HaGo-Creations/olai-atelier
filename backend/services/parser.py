@@ -81,14 +81,55 @@ async def parse_image(content: bytes, use_gemma_vision: bool = True) -> str:
 
 async def parse_audio(
     content: bytes,
-    source_lang: str = "Tamil",
+    source_lang: str = "auto",
     target_lang: str = "English",
 ) -> str:
-    """Gemma 4 E2B/E4B native ASR — local mode only (cloud 26B has no audio)."""
+    """Gemma 4 E2B/E4B native ASR — local mode preferred (cloud 26B has no audio).
+
+    When source_lang is "auto", asks the model to auto-detect spoken language
+    and return both the verbatim transcription and a translation into
+    target_lang. The returned text is the user-facing version (translation
+    followed by the original if different).
+    """
     if not gemma.LOCAL_READY:
         raise RuntimeError(
             "Audio requires local Gemma 4 E2B/E4B (Ollama). "
             "Cloud Gemma 4 26B does not support audio input. "
             "Install Ollama and pull gemma-4-e2b-it for audio."
         )
-    return await gemma.audio_transcribe(content, source_lang=source_lang, target_lang=target_lang)
+    raw = await gemma.audio_transcribe(content, source_lang=source_lang, target_lang=target_lang)
+
+    if source_lang.lower() not in ("auto", "", "detect", "automatic"):
+        # Non-auto path: model returned plain text (transcript [+ translation]).
+        return raw.strip()
+
+    # Auto-detect path: extract structured fields.
+    detected = ""
+    original = ""
+    translation = ""
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        lower = line.lower()
+        if lower.startswith("detected_language:") or lower.startswith("detected language:"):
+            detected = line.split(":", 1)[1].strip()
+        elif lower.startswith("original:"):
+            original = line.split(":", 1)[1].strip()
+        elif lower.startswith("translation"):
+            # "TRANSLATION (English): ..." or "TRANSLATION: ..."
+            translation = line.split(":", 1)[1].strip() if ":" in line else ""
+
+    # Best effort: if the model didn't follow the format, return whatever it said.
+    if not (detected or original or translation):
+        return raw.strip()
+
+    # Build the user-facing text. Prefer translation; if same as original or
+    # detected language matches target_lang, just show one.
+    parts = []
+    if translation:
+        parts.append(translation)
+    if original and original != translation:
+        suffix = f" ({detected})" if detected else ""
+        parts.append(f"\n_Original{suffix}:_ {original}")
+    return "\n".join(parts).strip() or raw.strip()

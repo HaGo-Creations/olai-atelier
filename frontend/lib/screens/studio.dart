@@ -1,9 +1,13 @@
 // lib/screens/studio.dart
+import 'dart:async';
+
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
 
 import '../main.dart';
@@ -832,9 +836,37 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
   bool _hovering = false;
   bool _searching = false;
   final _searchCtrl = TextEditingController();
+
+  // ── Live audio recording state ───────────────────────────────────────────
+  final AudioRecorder _recorder = AudioRecorder();
+  bool _isRecording = false;
+  bool _transcribing = false;
+  Duration _recordDuration = Duration.zero;
+  Timer? _recordTimer;
+  String _transcriptTargetLang = 'English';
+
+  static const List<String> _transcriptLanguages = [
+    'English',
+    'Tamil',
+    'Hindi',
+    'Telugu',
+    'Kannada',
+    'Malayalam',
+    'Bengali',
+    'Marathi',
+    'Gujarati',
+    'Urdu',
+    'Punjabi',
+    'French',
+    'Arabic',
+    'Spanish',
+  ];
+
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _recordTimer?.cancel();
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -879,6 +911,128 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
         widget.onChanged();
       });
     }
+  }
+
+  // ── Live audio recording ─────────────────────────────────────────────────
+
+  Future<void> _toggleRecord() async {
+    if (_isRecording) {
+      await _stopRecording();
+    } else {
+      await _startRecording();
+    }
+  }
+
+  Future<void> _startRecording() async {
+    try {
+      if (!await _recorder.hasPermission()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+              'Microphone permission denied. Enable it in your browser settings.',
+            )),
+          );
+        }
+        return;
+      }
+      // Web records to memory; mobile/desktop need a file path. Use blob on web,
+      // tmp path elsewhere. The record package handles this via startStream on
+      // web, but the simpler `start()` API also works with a path on every
+      // platform via path_provider — for web we pass an empty path and the
+      // plugin returns a blob URL.
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.opus, // webm/opus — Gemma & Whisper both accept
+          bitRate: 64000,
+          sampleRate: 16000, // 16kHz mono is optimal for ASR
+          numChannels: 1,
+        ),
+        path: 'recording.webm',
+      );
+      setState(() {
+        _isRecording = true;
+        _recordDuration = Duration.zero;
+      });
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        setState(() => _recordDuration += const Duration(seconds: 1));
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not start recording: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    _recordTimer?.cancel();
+    final path = await _recorder.stop();
+    setState(() => _isRecording = false);
+    if (path == null) return;
+
+    // On web, `path` is a blob URL (blob:...). On native it's a file path.
+    // Both are fetchable via package:http.
+    List<int> bytes;
+    try {
+      final response = await http.get(Uri.parse(path));
+      bytes = response.bodyBytes;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not read recording: $e')),
+        );
+      }
+      return;
+    }
+
+    if (bytes.isEmpty) return;
+
+    setState(() => _transcribing = true);
+    try {
+      final api = ref.read(apiServiceProvider);
+      final parsed = await api.parseFile(
+        bytes: bytes,
+        filename: 'recording_${DateTime.now().millisecondsSinceEpoch}.webm',
+        sourceLang: 'auto',
+        targetLang: _transcriptTargetLang,
+      );
+      if (!mounted) return;
+      if (parsed.text.trim().isNotEmpty) {
+        setState(() {
+          widget.state.sourceText = widget.state.sourceText.isEmpty
+              ? parsed.text
+              : '${widget.state.sourceText}\n\n${parsed.text}';
+          widget.onChanged();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+            'Transcribed ${_formatDuration(_recordDuration)} of audio',
+          )),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No speech detected in the recording.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Transcription failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _transcribing = false);
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    final m = d.inMinutes.toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   Future<void> _runSearch(String q) async {
@@ -931,22 +1085,70 @@ class _UploadZoneState extends ConsumerState<_UploadZone> {
           Text('Drop files here, or use the options below',
               style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.md),
-          // Primary actions: Browse, Paste text
+          // Primary actions: Browse, Paste text, Record audio
           Wrap(
             spacing: 8,
             runSpacing: 8,
             alignment: WrapAlignment.center,
             children: [
               FilledButton.tonalIcon(
-                  onPressed: _pickFiles,
+                  onPressed: _isRecording || _transcribing ? null : _pickFiles,
                   icon: const Icon(Icons.folder_open, size: 16),
                   label: const Text('Browse device')),
               FilledButton.tonalIcon(
-                  onPressed: _pasteText,
+                  onPressed: _isRecording || _transcribing ? null : _pasteText,
                   icon: const Icon(Icons.content_paste, size: 16),
                   label: const Text('Paste text')),
+              _transcribing
+                  ? const _TranscribingChip()
+                  : FilledButton.tonalIcon(
+                      onPressed: _toggleRecord,
+                      icon: Icon(
+                        _isRecording ? Icons.stop_circle : Icons.mic,
+                        size: 16,
+                        color: _isRecording ? Colors.red : null,
+                      ),
+                      label: Text(_isRecording
+                          ? 'Stop  ${_formatDuration(_recordDuration)}'
+                          : 'Record audio'),
+                    ),
             ],
           ),
+          // Transcript target language (only when not in middle of recording)
+          if (!_isRecording) ...[
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.translate, size: 14),
+                const SizedBox(width: 6),
+                Text('Transcribe to:',
+                    style: Theme.of(context).textTheme.labelSmall),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 160,
+                  child: DropdownButtonFormField<String>(
+                    value: _transcriptTargetLang,
+                    isDense: true,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    ),
+                    items: [
+                      for (final l in _transcriptLanguages)
+                        DropdownMenuItem(value: l, child: Text(l)),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() => _transcriptTargetLang = v);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
           // Web search divider + input
           Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -1643,6 +1845,33 @@ class _ActionBanner extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// Small chip shown while audio is being uploaded/transcribed.
+class _TranscribingChip extends StatelessWidget {
+  const _TranscribingChip();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 8),
+          Text('Transcribing…', style: TextStyle(fontSize: 13)),
         ],
       ),
     );
