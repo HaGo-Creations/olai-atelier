@@ -1,0 +1,107 @@
+{
+  "app_name": "Gemma Educator",
+  "tab_desk": "Desk",
+  "tab_studio": "Studio",
+  "tab_cabinet": "Cabinet",
+  "tab_settings": "Settings",
+
+  "welcome_morning": "Good morning",
+  "welcome_afternoon": "Good afternoon",
+  "welcome_evening": "Good evening",
+  "welcome_stat": "{count} resources created this week",
+  "welcome_continue": "Continue last session",
+
+  "quick_launch": "Quick Launch",
+  "create_new": "Create New",
+  "create_picker_title": "What would you like to create?",
+
+  "recent_resources": "Recent Resources",
+  "recent_empty": "No resources yet. Create your first one.",
+  "view_grid": "Grid",
+  "view_list": "List",
+
+  "studio_build": "Build",
+  "studio_shape": "Shape",
+  "studio_output": "Output",
+  "next": "Next",
+  "back": "Back",
+  "generate": "Generate",
+  "generating": "Generating…",
+
+  "upload_title": "Add Source Material",
+  "upload_hint": "Drop files here, paste text, or browse",
+  "browse_files": "Browse files",
+  "paste_text": "Paste text",
+
+  "resource_picker": "Choose Resource Type",
+  "subject": "Subject",
+  "grade": "Grade",
+  "lesson": "Lesson",
+
+  "topic": "Topic",
+  "objective": "Learning objective",
+  "language": "Language",
+  "extra_instructions": "Extra instructions",
+
+  "format": "Format",
+  "show_objectives": "Show objectives",
+  "include_answer_key": "Include answer key",
+  "include_rubric": "Include rubric",
+  "bold_headers": "Bold headers",
+  "numbered_items": "Numbered items",
+
+  "content_balance": "Content Balance",
+  "exact_textbook": "Exact textbook content",
+  "additional_content": "Additional content",
+
+  "search_hint": "Find resources by topic, subject…",
+  "no_results": "No matching resources",
+  "export": "Export",
+
+  "settings_profile": "Teacher Profile",
+  "settings_curriculum": "Curriculum Library",
+  "settings_fields": "Field Editor",
+  "settings_templates": "Layout Templates",
+  "settings_prompts": "Prompt Editor",
+  "settings_branding": "Letterhead & Branding",
+  "settings_appearance": "Appearance",
+  "settings_model": "Model & Connection",
+
+  "profile_name": "Name",
+  "profile_school": "School / Organization",
+  "profile_subjects": "Subjects",
+  "profile_grades": "Grades",
+
+  "add": "Add",
+  "save": "Save",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "edit": "Edit",
+  "lock": "Lock",
+  "unlock": "Unlock",
+  "unlock_confirm_title": "Unlock this?",
+  "unlock_confirm_body": "Unlocking will let you edit content that affects AI context. Continue?",
+
+  "theme_light": "Light",
+  "theme_dark": "Dark",
+  "theme_system": "System",
+  "theme_mode": "Theme",
+
+  "model_mode": "Model mode",
+  "model_local": "Local (offline)",
+  "model_cloud": "Cloud (online)",
+  "model_auto": "Auto (online when available)",
+  "badge_local": "Local",
+  "badge_cloud": "Cloud",
+  "badge_offline": "Offline",
+
+  "branding_logo": "Logo",
+  "branding_school_name": "School name",
+  "branding_address": "Address",
+  "branding_phone": "Phone",
+  "branding_email": "Email",
+  "branding_footer": "Footer text",
+  "branding_apply_on_export": "Apply on export",
+
+  "language_setting": "Language"
+}

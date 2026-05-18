@@ -1,0 +1,40 @@
+# .github/workflows/deploy_hf.yml
+#
+# Automatically pushes backend/ to the Hugging Face Space whenever
+# backend code changes land on main.
+#
+# One-time setup in GitHub repo Settings → Secrets and variables → Actions:
+#   HF_TOKEN  — your Hugging Face write token
+#               (Settings → Access Tokens → New token → write)
+
+name: Deploy Backend to Hugging Face
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # full history needed for subtree split
+
+      - name: Push backend/ to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config user.email "ci@github.com"
+          git config user.name  "GitHub Actions"
+
+          # Add the HF Space as a remote (token embedded in URL for auth)
+          git remote add hf \
+            "https://HaGo-Creations:${HF_TOKEN}@huggingface.co/spaces/hago-creations/gemma-educator"
+
+          # Push only the backend/ subdirectory as the root of the HF repo
+          git subtree push --prefix=backend hf main

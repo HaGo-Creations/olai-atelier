@@ -1,0 +1,74 @@
+# docker-compose.yml
+#
+# Local development stack: FastAPI backend + Ollama (Gemma 4).
+# The Flutter frontend still runs natively: cd frontend && flutter run -d web-server
+#
+# Usage:
+#   1. Copy backend/.env.example to backend/.env and fill in values
+#   2. docker compose up          # starts Ollama + backend
+#   3. Wait ~60 s for Ollama to pull the model on first run
+#   4. Set API_BASE_URL=http://localhost:7860 in your frontend env file
+#   5. cd frontend && flutter run -d web-server --web-port 8080
+#
+# GPU note (NVIDIA):
+#   Uncomment the `deploy` section under the ollama service for GPU acceleration.
+
+services:
+
+  # ── Ollama (local model server) ────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 20s
+    # Uncomment for NVIDIA GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ── Pull the Gemma 4 model (runs once, then exits) ────────────────────────
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: >
+      sh -c "
+        ollama pull ${OLLAMA_MODEL:-gemma4:4b} &&
+        echo 'Model ready.'
+      "
+    restart: "no"
+
+  # ── FastAPI backend ────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "7860:7860"
+    env_file:
+      - backend/.env               # copy from backend/.env.example
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - PORT=7860
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  ollama_models:
